@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INQUIZUS</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Inquizus">
+<meta name="theme-color" content="#e8c84a">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0e0e0e; --surface: #1a1a1a; --border: #2e2e2e;
+  --accent: #e8c84a; --accent2: #e05a2b; --text: #f0ece0;
+  --muted: #777; --correct: #4caf7d; --wrong: #e05a2b; --partial: #e8c84a;
+}
+body { background: var(--bg); color: var(--text); font-family: Georgia, serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 16px 80px; }
+.header { width: 100%; max-width: 640px; padding: 36px 0 18px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+.header-title { font-family: Impact, Arial Black, sans-serif; font-size: clamp(48px, 14vw, 84px); letter-spacing: 8px; color: var(--accent); line-height: 1; }
+.header-sub { font-family: monospace; font-size: 11px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-top: 8px; }
+.progress-bar { width: 100%; max-width: 640px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+.progress-track { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); transition: width 0.4s; }
+.progress-label { font-family: monospace; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.score-display { font-family: monospace; font-size: 12px; color: var(--muted); text-align: right; width: 100%; max-width: 640px; margin-bottom: 16px; }
+.score-display b { color: var(--accent); }
+.card { width: 100%; max-width: 640px; background: var(--surface); border: 1px solid var(--border); padding: 24px; margin-bottom: 14px; }
+.card-number { font-family: monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent2); margin-bottom: 10px; text-transform: uppercase; }
+.card-question { font-size: 15px; line-height: 1.75; margin-bottom: 18px; }
+.card-question strong { color: var(--accent); }
+.answer-area { display: flex; gap: 8px; }
+.answer-input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: Georgia, serif; font-size: 15px; padding: 10px 12px; outline: none; resize: none; min-height: 44px; }
+.answer-input:focus { border-color: var(--accent); }
+.answer-input:disabled { opacity: 0.5; }
+.btn-check { background: var(--accent); color: #000; border: none; font-family: Impact, sans-serif; font-size: 14px; letter-spacing: 2px; padding: 10px 16px; cursor: pointer; white-space: nowrap; }
+.btn-check:disabled { opacity: 0.4; cursor: default; }
+.result-badge { margin-top: 12px; padding: 10px 14px; font-size: 13px; line-height: 1.5; display: none; border-left: 3px solid; }
+.result-badge.correct { display: block; background: rgba(76,175,125,0.1); border-color: var(--correct); }
+.result-badge.wrong { display: block; background: rgba(224,90,43,0.1); border-color: var(--wrong); }
+.result-badge.partial { display: block; background: rgba(232,200,74,0.1); border-color: var(--partial); }
+.verdict { font-family: monospace; font-size: 11px; letter-spacing: 2px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
+.result-badge.correct .verdict { color: var(--correct); }
+.result-badge.wrong .verdict { color: var(--wrong); }
+.result-badge.partial .verdict { color: var(--partial); }
+.correct-ans { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.nav-row { width: 100%; max-width: 640px; display: flex; justify-content: space-between; gap: 10px; }
+.btn-nav { background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: monospace; font-size: 12px; padding: 9px 16px; cursor: pointer; }
+.btn-nav:hover { border-color: var(--accent); color: var(--accent); }
+.btn-nav:disabled { opacity: 0.3; cursor: default; }
+#start-screen { width: 100%; max-width: 640px; }
+.start-info { font-size: 14px; color: var(--muted); line-height: 1.8; margin-bottom: 28px; border: 1px solid var(--border); padding: 20px; }
+.start-info b { color: var(--text); }
+.btn-start { display: block; width: 100%; background: var(--accent); color: #000; border: none; font-family: Impact, sans-serif; font-size: 20px; letter-spacing: 4px; padding: 16px; cursor: pointer; }
+#quiz-screen { display: none; width: 100%; }
+#results-screen { display: none; width: 100%; max-width: 640px; text-align: center; padding: 40px 0; }
+.final-score { font-family: Impact, sans-serif; font-size: 96px; color: var(--accent); line-height: 1; }
+.final-label { font-family: monospace; font-size: 12px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 24px; }
+.final-breakdown { display: flex; justify-content: center; gap: 40px; margin-bottom: 32px; }
+.fi-n { font-family: Impact, sans-serif; font-size: 40px; }
+.fi-l { font-family: monospace; font-size: 10px; color: var(--muted); letter-spacing: 2px; }
+.btn-restart { background: var(--accent); color: #000; border: none; font-family: Impact, sans-serif; font-size: 18px; letter-spacing: 3px; padding: 14px 40px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">INQUIZUS</div>
+  <div class="header-sub">Pub Kviz &mdash; Vol. 1 &nbsp;&middot;&nbsp; 42 pitanja</div>
+</div>
+
+<div id="start-screen">
+  <div class="start-info">
+    <b>Kako radi provjera?</b><br><br>
+    Odgovori ne moraju biti doslovni &mdash; provjera ignorira dijakritike, velika slova i prihvata sinonime i alternate nazive.<br><br>
+    Npr. "femur" prolazi za "bedrena kost", "camino" za "Put sv. Jakova" itd.<br><br>
+    <b>Bodovanje:</b> Tocno = 1 &nbsp;|&nbsp; Djelomicno = 0.5 &nbsp;|&nbsp; Krivo = 0
+  </div>
+  <button class="btn-start" id="btn-start">KRENI</button>
+</div>
+
+<div id="quiz-screen">
+  <div class="progress-bar">
+    <div class="progress-track"><div class="progress-fill" id="prog-fill"></div></div>
+    <div class="progress-label" id="prog-label">1 / 42</div>
+  </div>
+  <div class="score-display">Bodovi: <b id="score-val">0</b></div>
+  <div class="card">
+    <div class="card-number" id="q-num">PITANJE 01</div>
+    <div class="card-question" id="q-text"></div>
+    <div class="answer-area">
+      <textarea class="answer-input" id="ans-input" rows="2" placeholder="Tvoj odgovor..."></textarea>
+      <button class="btn-check" id="btn-check">PROVJERI</button>
+    </div>
+    <div class="result-badge" id="result-badge">
+      <div class="verdict" id="r-verdict"></div>
+      <div id="r-expl"></div>
+      <div class="correct-ans" id="r-correct"></div>
+    </div>
+  </div>
+  <div class="nav-row">
+    <button class="btn-nav" id="btn-prev">&larr; PRETHODNO</button>
+    <button class="btn-nav" id="btn-next">SLJEDE&#262;E &rarr;</button>
+  </div>
+</div>
+
+<div id="results-screen">
+  <div class="final-score" id="res-total">0</div>
+  <div class="final-label">od 42 moguca boda</div>
+  <div class="final-breakdown">
+    <div><div class="fi-n" style="color:var(--correct)" id="res-c">0</div><div class="fi-l">TOCNO</div></div>
+    <div><div class="fi-n" style="color:var(--partial)" id="res-p">0</div><div class="fi-l">DJELOMICNO</div></div>
+    <div><div class="fi-n" style="color:var(--wrong)" id="res-w">0</div><div class="fi-l">KRIVO</div></div>
+  </div>
+  <button class="btn-restart" id="btn-restart">PONOVI KVIZ</button>
+</div>
+
+<script>
+var EXPL = [
+  "Corto Maltese je fiktivni stripski junak talijanskog autora i crtaca Huga Pratta, koji je lik prvi put predstavio 1967. u strip-albumu Balada o slanom moru. Corto Maltese je mornar i avanturist rodom s Malte, roden 1887. od britanskog mornara iz Cornwalla i ciganske vještice iz Sevile. Pratt ga je smjestio u pocetak 20. stoljeca i kroz seriju albuma vodio ga raznim egzoticnim lokacijama — od Tihog oceana i Sibira do Venecije i Latinske Amerike. Lik je poznat po filozofskim monolozima, melankolicnom karakteru i moralno ambivalentnim odlukama. Smatra se jednim od najznacajnijih likova europskog stripa i ikonom tzv. stripa za odrasle.",
+
+  "Hanibal Barka (247. – 183./181. pr. Kr.) bio je kartaski vojskavoda i jedan od najvecih vojnih stratega antickog svijeta. Sin Hamilkara Barke, odrastao je u vojnoj tradiciji Kartage i od mladosti pokazivao iznimne strateske sposobnosti. Najpoznatiji je po Drugom punskom ratu (218.–201. pr. Kr.) u kojemu je poveo vojsku — ukljucujuci ratne slonove — preko Pirinejskog poluotoka, juzne Galije i Alpa direktno u Italiju, sto je bilo smion potez koji je Rim potpuno iznenadio. U bici kod Kane 216. pr. Kr. okruzio je i gotovo uništio rimsku vojsku, sto se smatra jednim od najsavrsenijem taktickeg okruzenja u vojnoj povijesti. Njegovo ime na punskom jeziku znaci dar Baala ili milost Baalova.",
+
+  "SOS je medunarodni signal za pomoc u Morseovom kodu, sastavljen od tri kratka, tri duga i tri kratka signala (... --- ...). Uveden je 1906. Berlinskon radiotelegrafskom konvencijom kao standardni signal za hitne situacije jer je bio jednostavan za odašiljanje i prepoznavanje. Uobicajena zabluda je da SOS stoji za Save Our Souls ili Save Our Ship — zapravo je odabran iskljucivo zbog tehnicke jednostavnosti. Do tada se koristio signal CQD, ali SOS se pokazao superiornijim jer je tesko pogresiti tri para signala u seriji. I danas ostaje simbolom poziva u nevolji, premda je u profesionalnoj pomorskoj i zracnoj komunikaciji vec uglavnom zamijenjen digitalnim sustavima.",
+
+  "Jan Palach (1948.–1969.) bio je cesk student filozofije i povijesti na Sveucilistu Karlova u Pragu. Nakon što su snage Varsavskog pakta u kolovozu 1968. ugusile Prasko proljece — pokret liberalizacije koji je vodio Alexander Dubcek — Palach je odlucio uciniti dramatican protest. Dana 16. sijecnja 1969. pollio se benzinom i zapalio na Václavskom trgu u Pragu. Preminuo je od opeklina tri dana kasnije, 19. sijecnja. Njegova smrt izazvala je val javne zice i pokrenula masovne demonstracije. Palach je postao simbol otpora komunistickoj vlasti i jedan od najvaznih simbola ceskog nacionalnog identiteta. Danas se Václavski trg i sveucilisni trg u Pragu djelomicno imenuju po njemu.",
+
+  "Medunarodni olimpijski odbor (MOO, franc. Comité International Olympique – CIO) je medunarodno nevladino tijelo sa sjedištem u Lausanni, Švicarska, osnovano 1894. na inicijativu francuskog baruna Pierrea de Coubertina. Osnovna mu je zadaca organizacija i nadzor modernih Olimpijskih igara. Dimitrios Vikelas, grcki knjizevnik i javni djelatnik, bio je prvi predsjednik MOO-a od 1894. do 1896., nakon cega je Coubertin preuzeo duznost i vodio organizaciju sve do 1925. MOO danas obuhvaca 206 nacionalnih olimpijskih odbora i smatra se jednom od najutjecajnijih sportskih organizacija na svijetu.",
+
+  "Kapibara (Hydrochoerus hydrochaeris) je najveci zivuci glodavac na svijetu. Odrasle jedinke mogu doseci tezinu do 65 kilograma i duljinu tijela do 130 centimetara. Zivi u tropskim i suptropskim podrucjima Juzne Amerike, uvijek u blizini vode — rijeka, jezera i mocvara. Poluvodnena je zivotinja i izvrstan pliva. Zivi u skupinama i poznat je po miroljubivoj naravi. Naziv kapibara dolazi iz gvaranskog jezika i znaci gospodar trave ili vlasnik trave, sto odgovara njezinoj biljojed ishrani. U nekim latinoamerickim zemljama uzgaja se i kao domaca zivotinja ili za prehranu.",
+
+  "Tetris je logicka videoigra koju je 1984. dizajnirao sovjetski informaticki inzenjer Aleksej Pazitinov dok je radio u Moskvi za Akademiju znanosti SSSR-a. Igrac slaze padajuce geometrijske oblike (tetromino) tako da popune cijele redove, koji se zatim brisu. Naziv dolazi od grcke predpone tetra (cetiri) i tenisa, Pazitnovljevog omiljenog sporta. Igra je izvorno distribuirana unutar socijalistickih zemalja, ali je 1986. stigla na Zapad. Pravu slavu donjela joj je verzija za Nintendo Game Boy 1989. koja je dolazila uz konzolu i prodana u desecima milijuna primjeraka. Tetris je jedna od najprodavanijih videoigara svih vremena, dostupna na gotovo svakoj platformi ikad proizvedenoj.",
+
+  "Miss Svijeta (Miss World) je medunarodno natjecanje ljepote koje je 1951. osnovao britanski poduzetnik Eric Morley. Smatra se jednim od cetiri najprestizna natjecanja ljepote na svijetu, uz Miss Universe, Miss International i Miss Earth. Prvo natjecanje odrzano je u Londonu, a pobjednica je bila Kerstin Hakansson iz Svedske. Natjecanje se emitira u više od 100 zemalja i privlaci milijune gledatelja. Morleyeva supruga Julia nastavila je organizaciju natjecanja nakon njegove smrti 2000. Natjecanje je kroz povijest bilo predmetom kontroverzi zbog standarda ljepote i objektivizacije zena, ali je i platforma za humanitarne aktivnosti pobjednica.",
+
+  "Krbavska bitka odrzana je 9. rujna 1493. na Krbavskom polju u Lici i smatra se jednom od najtragicnijih bitaka u hrvatskoj povijesti. Osmanska vojska pod zapovjednistvom bosanskog sandžak-bega Hadum Jakub-pase nadmudrila je i okruzila hrvatsku feudalnu vojsku predvodenu banom Emerikom Derencinon. Poraz je bio razoran — vecina hrvatske plemicke elite poginula je ili zarobljena, ukljucujuci i samog bana. Bitka je oznacila pocetak dugotrajnog osmanskog prodora u hrvatske i ugarske krajeve te dovela do demografskog i politickog slabljenja Hrvatske. U hrvatskoj historiografiji smatra se jednom od kljucnih tocaka koje su oblikovale kasniju povijest naroda.",
+
+  "MTV (Music Television) je americka kabelska televizijska mreza koja je zapocela s emitiranjem 1. kolovoza 1981. u ponoci. Kanal je revolucionizirao glazbenu industriju uvodenjem glazbenog videospota kao primarnog medija promocije glazbenika. Prva emitirana pjesma bila je simbolicno Video Killed the Radio Star britanskog dvojca The Buggles. U 1980-im i ranim 1990-im MTV je bio dominantna kulturna sila koja je lansirala karijere Michaela Jacksona, Madonne, Prince-a i mnogih drugih. Kanal je takoer popularizirao MTV generaciju i potaknuo novi vizualni jezik u popularnoj kulturi. S godinama se profil kanala promijenio prema reality programima, a originalna glazbena funkcija je smanjena.",
+
+  "Balet je klasicna plesna forma koja se razvila na talijanskim renesansnim dvorovima u 15. i 16. stoljecu, a potom se prosirila na Francusku i ostatak Europe. Karakterizira ga kodificiran sustav pokreta i pozicija, tehnika na prstima za plesacice (en pointe), specifican vokabular pojmova na francuskom jeziku te dramska naracija kroz ples. Cetiri medunarodno priznatih metodologija poucavanja baleta su: Vaganova (ruska skola), Cecchetti (talijanska), Bournonville (danska) i Balanchine (americka). Balet se dijeli na klasicni (npr. Labudovo jezero), neoklasicni i suvremeni. Najpoznatija baletna kazalista su Boljsoj u Moskvi, Royal Ballet u Londonu i Paris Opera Ballet.",
+
+  "Tabu je rijec tonganskog podrijetla (tapu) koja oznacava zabranjen ili svet predmet, osobu, radnju ili rijec. Koncept tabua univerzalan je u ljudskim kulturama — javlja se u gotovo svim drustvima, od plemenskih do modernih. Oznacava zabranu koja nije nuzno zakonska nego drustvena ili religiozna, a njezino krsenje smatra se moralnim prekrsajem ili opasnoscu. Pojam je u europske jezike ušao pocetkom 19. stoljeca posredstvom kapetana Jamesa Cooka, koji ga je dokumentirao na putovanjima po Polineziji. U psihologiji, Sigmund Freud je temeljito analizirao tabu u djelu Totem i tabu (1913.), povezujuci ga s temeljima civilizacije i psiholoskim mehanizmima zabrane.",
+
+  "Ariana Grande-Butera (rod. 1993.) americka je pop pjevacica i glumica iz Boca Ratona na Floridi. Karijeru je zapocela glumom u Broadwayjevom mjuziklu 13 te u seriji Victorious na Nickelodeonu. Glazbenu karijeru pokrenula je albumom Yours Truly (2013.). Postala je jedna od najprodavanijih glazbenica suvremene pop glazbe, poznata po opsegu glasa (sopran s izrazito visokim falzetom), vezicom za kosu i glazbenim spojevima popa, R&B-a i soula. U sijecnju 2019. postala je prva izvodacica od Beatlesa 1964. koja je istovremeno zauzela prva tri mjesta ljestvice Billboard Hot 100 s tri razlicite pjesme.",
+
+  "Bel Air je ekskluzivna rezidencijalna cetvrt u zapadnom dijelu Los Angelesa, u Kaliforniji, poznata po raskosnim vilama, privatnim ogradenim zajednicama i poznatim stanovnicima iz svijeta zabave i poslovnog sektora. Granic s Beverly Hillsom i Bel Airom. Televizijska serija Princ iz Bel Aira (The Fresh Prince of Bel-Air) emitirala se na NBC-u od 1990. do 1996. i pratila prilagodbu mladog Willa Smitha iz siromašnog kvarta Philadelphije na raskosni zivot u Bel Airu kod bogatih rodaka. Serija je lansirala glumacku karijeru Willa Smitha i postala kultna televizijska komedija 1990-ih.",
+
+  "Ivan Gundulic (1589.–1638.) bio je najistaknutiji pjesnik dubrovaske knjizevnosti i jedan od kljucnih autora baroka u hrvatskoj knjizevnosti. Roden u uglednoj dubrovackoj plemickoj obitelji, zivio je i stvarao u Dubrovackoj Republici. Njegova najznacajnija djela su ep Osman — o osmansko-poljskim sukobima — pastirska drama Dubravka i religiozna poema Suze sina razmetnoga. Ep Osman ostao je nedovrsena — nedostajala su 14. i 15. pjevanje, koje je na prijedlog Matice ilirske u 19. stoljecu dopunio Ivan Mazuranic, cime je djelo dobilo konacnu formu koja se danas citira kao klasik.",
+
+  "Kviskoteka je bila najgledanija i najdugovjecnija hrvatska televizijska kviz-emisija, koja se emitirala na HTV-u od 1985. do 2003. Emisiju je vodio Vlado Krsnik, a postala je kultna zbog specificnog formata, prepoznatljive glazbene teme (Child of Vision grupe Supertramp) i širokih opceobrazovnih pitanja. Bila je izrazito popularna ne samo u Hrvatskoj nego i u cijeloj bivšoj Jugoslaviji, gdje su je pratili milijuni gledatelja. U popularnoj kulturi postala je sinonimom za kviz opce kulture i ostala upamcena kao jedna od najvoljenijih emisija regionalne televizije.",
+
+  "Mihail Timofejević Kalasnjikov (1919.–2013.) bio je sovjetski i ruski vojni konstruktor, tvorac automatske puske AK-47 (Avtomat Kalasnjikova 1947.). Puska AK-47 i njezini derivati postali su najrasprostranjenije vatreno oruzje u povijesti — procjenjuje se da je proizvedeno vise od 100 milijuna komada. Zbog jednostavnosti, pouzdanosti i jeftinoce koristena je u sukobima diljem svijeta, od regularnih vojski do gerilskih pokreta. Kalasnjikov je cijeli zivot tvrdio da je ponosit na izum, ali je pred kraj zivota u pismu Ruskoj pravoslavnoj crkvi izrazio duhovnu dvojbu pitajuci se je li moralno odgovoran za smrt koju je njegovo oruzje prouzrocilo.",
+
+  "Saturnalije (lat. Saturnalia) bile su rimski praznik u cast boga Saturna, odrzavane svake godine u prosincu, inicijalno 17., a kasnije prosirene na tjedan dana do 23. prosinca. Obiljezavale su završetak jesenske sjetve i bile poznate po raskalasenosti, gozbama, pijankama i medusobnom darivanju. Karakterizticno za Saturnalije bilo je privremeno ukidanje drustvenih razlika — robovi su za stolom sjedili zajedno s gospodarima, a ponekad su im i sluzili. Mnogi povjesnicari smatraju da su Saturnalije imale znatan utjecaj na razvoj bozicnih obicaja u krscanskoj tradiciji, ukljucujuci razmjenu darova i slavlje u prosincu.",
+
+  "Put svetog Jakova (španj. Camino de Santiago) hodocasnicki je put koji vodi do katedrale u Santiagu de Composteli u Galiciji, sjeverozapadnoj Spaniji, gdje se prema tradiciji nalaze ostaci apostola Jakova Starijeg. Postoji vise glavnih ruta, od kojih je najpopularnija Camino Francés koja polazi iz Saint-Jean-Pied-de-Port u Francuskoj i dulja je oko 800 kilometara. Hodocasca su zapocela u 9. stoljecu i dosegla vrhunac popularnosti u srednjem vijeku. Vijece Europe proglasilo je put 1987. prvom europskom kulturnom rutom. Danas svake godine put prode vise od 300.000 hodocasnika iz cijelog svijeta, od vjerskih hodocasnika do rekreativnih pustera.",
+
+  "Orion je jedno od najpoznatijih i najuocljivijih zvijezda na nocnom nebu, vidljivo sa svih naseljenih kontinenata zbog polozaja uz nebeski ekvator. Ime je dobilo po Orionu, miticnom lova iz grcke mitologije. Sedam najsjajnijih zvijezda cini karakteristicni oblik — cetiri oznacavaju ramena i koljena gorostas, a tri sredisnje zvijezde (Alnitak, Alnilam i Mintaka) tvore Orionov pojas, jedan od najprepoznatljivijih zvijezdanih obrazaca. U zvijezdi se nalaze i slavna Orionova maglica (M42), jedna od najfotografiranijihmesta dubokog svemira, vidljiva golim okom kao maglicasto podrucje ispod pojasa.",
+
+  "Garsonijera je naziv za manje stambeno jedinstvo povrsine obicno 20 do 40 kvadratnih metara, u kojoj jedan prostor obavlja vise funkcija — najcesce spavaca soba, dnevni boravak i radni prostor u jednom. Naziv dolazi od francuske rijeci garcon što znaci momak ili decki, jer su takvi stanovi izvorno bili namijenjeni mladi, samcima ili studentima koji si nisu mogli priustiti veci smjestaj. U proslosti su garsonijere znale biti i bez kuhinje, dizajnirane iskljucivo za muškarce koji su obroke uzimali u restoranima. Danas je garsonijera jedan od najpopularnijih tipova nekretnina u urbanim sredinama zbog pristupacne cijene i prakticnosti za single kucanastvo.",
+
+  "Toni Kukoc (rod. 1968. u Splitu) jedan je od najuspjesnijih košarkasa u povijesti Hrvatske i europske kosarke. Trostruki prvak Europe s Jugoplastikom iz Splita, a potom i trostruki prvak NBA s Chicago Bullsima (1996., 1997., 1998.) uz Michaela Jordana i Scottie Pippena. Poznat po svestranosti i viziji igre, Kukoc je bio kljucni cimbenik tzv. drugog triceta Bullsa. U rujnu 2021. uveden je u NBA Kucu slavnih (Hall of Fame) u Springfieldu, Massachusetts, zajedno s legendama poput Bena Wallacea i Paula Piercea, cime je kompletirana slavna hrvatska kosarkaska petorka — uz Kresu Cosica, Dražena Petrovica, Dina Radu i trenera Mirka Novosela.",
+
+  "Femur ili bedrena kost (os femoris) najdulja je, najcvrca i najmasivnija kost u ljudskom tijelu. Smjestena je u natkoljenici, spaja zdjelicu (kuk) s koljenom i nosi gotovo cjelokupnu tezinu tijela pri stajanju i hodanju. Prosjecna duljina femura odrasle osobe iznosi oko 45 do 50 centimetara, sto odgovara otprilike 27 posto ukupne visine tijela. Ova proporcija je toliko stabilna bez obzira na etnicku ili geografsku pozadinu da je forenzicarima i antropolozima omogucava pouzdanu rekonstrukciju visine iz nepotpunih kosturnih ostataka. Zbog gustoce i otpornosti femur je jedna od rijetkih kostiju koje prezive tisuce godina u arheoloskim nalazistima.",
+
+  "Maraton lada tradicionalna je amaterska veslaška i jedrilaška utrka na rijeci Neretvi u Dalmaciji, koja se odrzava od 1998. svake druge subote u kolovozu. Utrka se odrzava na autohtonim plovilima koja se zovu lade — niskim, uskim drvenim camcima karakteristicnim za dolinu Neretve. Relacija iznosi 22 500 metara od Metkovic do Ploca, a u natjecanju sudjeluju i domace i strane posade. Utrka je dio sirog napora da se sacuvaju tradicijsko brodogradnja i nacin zivota karakteristican za to podrucje, koji je ugrožen industrijalizacijom i turistifikacijom.",
+
+  "Greta Tintin Eleonora Ernman Thunberg (rod. 2003. u Stockholmu) svedska je ekoloska aktivistkinja koja je postala globalni simbol borbe protiv klimatskih promjena. U kolovozu 2018., u dobi od 15 godina, zapocela je tjedne prosvjede ispred svedskog parlamenta zahtijevajuci odlucniju klimatsku politiku pod sloganom Skolstrejk för klimatet (Školski strajk za klimu). Pokret se brzo prosiro medu mladima diljem svijeta pod imenom Fridays for Future. U prosincu 2019. casopis Time proglasio ju je Osobom godine — najmlada osoba u povijesti na toj poziciji. Poznata je po direktnom, kompromisnom govoru i otvorenim kritikama svjetskih lidera na medunarodnin klimatskim skupovima.",
+
+  "Limuzina je tip automobila koji se karakterizira trolumenskom karoserijom (zasebni pretinci za motor, putnike i prtljagu), dugackim meduosovinskim razmakom i cvrsti krovom. Naziv dolazi od historijske francuske pokrajine Limousin, sa sjedistem u gradu Limogesu, ciji su pastiri nosili posebne dugacke plastenice koje su podsjecale na izgled prvih zatvorenih automobila s odvojenim kuticom za vozaca. Limuzine se dijele na standardne (sedani visoke klase) i rastegnute (stretch limousines) koje su simbol luksuza i ceremonijalne prilike. U popularnoj kulturi limuzina je sinonim za bogatstvo, glamur i VIP status.",
+
+  "Psihomodo Pop je hrvatski rock sastav osnovan 1979. u Zagrebu. Jedan su od najvaznih i najprepoznatljivijih bendova bivse jugoslavenske rock scene, poznati po specificnoj kombinaciji garaznog rocka, popa i poeticnih tekstova na hrvatskom jeziku. Bend je 1988. snimio spot za pjesmu I Won't Be There (engleska verzija jednog od svojih hitova) na amsterdamskom rock-festivalu, koji je te iste godine emitiran na MTV-u i time postali prvi izvodac s podrucja bivse Jugoslavije ciji je videospot prikazan na toj globalnoj glazbenoj mrezi. Time su otvorili vrata medunarodnijoj vidljivosti za cijelu regionalnu scenu.",
+
+  "Kitchen Confidential: Adventures in the Culinary Underbelly knjiga je memoarskog karaktera americkog kuhara i televizijskog voditelja Anthonyja Bourdaina, objavljena 2000. godine. Bourdain u njoj otkriva surovost, adrenalinski ritam i nerijetko destruktivnu kulturu profesionalnih kuhinja, ukljucujuci probleme s drogom i alkoholom. Knjiga je postala bestseler i kultno stivo gastronomskog svijeta. Na temelju nje CBS je 2005. producirao humoristicnu seriju Kitchen Confidential s Bradleyjem Cooperom u ulozi kuhara Jacka Bourdaina — fikcionaliziranom verzijom autora. Serija je otkazana nakon jedne sezone, no Cooperova izvedba privukla je paznju Hollywooda.",
+
+  "Dadaizam je avangardni kulturni i umjetnicki pokret koji je nastao 1916. u Zurichu, u Cabaret Voltaireu, kao reakcija na strahote Prvog svjetskog rata i ono sto su osnivaci smatrali bankrotom razuma i gradanskih vrijednosti. Osnivaci su bili Tristan Tzara, Hugo Ball, Emmy Hennings, Richard Huelsenbeck i drugi. Pokret se koristio nonsensorn, slucajnoscu, provokacijom i ironijom kao sredstvima umjetnickog izricaja. Prema popularnoj legendi, naziv dada pronadjen je slucajnim otvaranjem rjecnika — prema jednoj verziji rijec znaci drveni konjic na francuskom, prema drugoj je beznacajna djecja rijec. Dadaizam je imao dubok utjecaj na kasnije pokrete: nadrealizam, pop art i konceptualnu umjetnost.",
+
+  "Korejski poluotok smjesten je u istocnoj Aziji, okruzen Zutim morem na zapadu, Japanskim morem na istoku i Korejskim tjesnacem na jugu. Danas je podijeljen na Republiku Koreju (Juzna Koreja) i Demokratsku Narodnu Republiku Koreju (Sjeverna Koreja). Korejska kultura ima duboke i bogato razradene tradicije u glazbi, plesu, književnosti i filozofiji. Notacijski sustav jeong-gan-bo razvio je car Sejong Veliki u 15. stoljecu (vladao 1418.–1450.) — to je bio prvi istocnoazijski glazbeni notacijski sustav koji je u pisanom obliku biljezia ritam, dinamiku i mjeru, a ne samo melodijsku visinu tona.",
+
+  "Didaskalije su dio dramskog pisanog teksta koji sadrzi autorove napomene i upute namijenjene redatelju, glumcima i scenografima — opise scene, scenskog prostora, pokreta likova, rasvjete, atmosfere i slicno. Za razliku od dijaloskih dijelova, didaskalije su uvijek pisane u kurzivu i ne izgovaraju se na pozornici. Naziv potjece od starogrckoga glagola didaskein, sto znaci poucavati ili upucivati. U starogrckom kazalistu didascalos bio je ucitelj ili trener koji je uvjezbavao kor i glumce. Modernu ulogu didaskalija utemeljio je Henrik Ibsen u 19. st., a vrhunac su dostigle u dramama Georgea Bernarda Shawa i Eugena O'Neilla, koji su ih pisali s izrazitom knjizevnom ambicijom.",
+
+  "Proljetje (tal. La Primavera) je jedno od najcuvenijih slikarskih djela talijanske renesanse, koje je oko 1477.–1482. naslikao firentinski majstor Sandro Botticelli. Slika prikazuje alegorijski vrt s devet figura: u sredini je Venera, bozica ljubavi, a oko nje su Tri gracije, Merkur, Zefir (bog zapadnog vjetra), Kloris i Flora. Tocno znacenje slike predmetom je stoljetnih rasprava medu povjesnicarima umjetnosti — najcesce se tumaci kao neoplatonisticka alegorija proljetnog budjenja prirode i ljubavi. Slika se cuva u Uffizi galeriji u Firenci i jedan je od najposjecenijih eksponata europske kulture.",
+
+  "Braca Karamazovi (rus. Bratya Karamazovy) roman je Fjodora Mihajlovica Dostojevskog, objavljen 1879.–1880. u nastavcima u casopisu Russki Vestnik, a potom kao knjiga 1880. Rijec je o posljednjem i najopseznijem Dostojevskijevom romanu, koji istrazuje duboke filozofske teme: postojanje Boga, slobodnu volju, moral, grijehu i otkupljenu. Radnja prati tri brata — strastvenog Dmitrija, intelektualnog Ivana i pobonog Aljoshu — i njihovog razuzdanog oca Fjodora Karamazova, cije ubojstvo postaje srediste zapleta. Roman se cesto navodi kao jedno od najvecih knjizevnih dostignuca europske civilizacije.",
+
+  "Rasomon (jap. Rashomon) je japonski film iz 1950. godine u reziji Akire Kurosawe, snimljen prema kratkim pricama Ryunosukea Akutagawe. Film prikazuje isti dogadaj — ubojstvo samuraja — kroz cetiri medusobno suprotstavljena i proturjecna iskaza svjedoka i sudionika, postavjajuci pitanje o relativnosti istine i subjektivnosti percepcije. Rasomon je postigao medunarodni proboj osvajanjem Zlatnog lava na Venecijanskom filmskom festivalu 1951. i Pocasnog Oscara iste godine, sto je bilo revolucionarno za japansku kinematografiju koja dotad nije imala globalnu prepoznatljivost. Pojam rashomon efekt usao je u filozofiju i psihologiju kao opis situacije u kojoj vise osoba isto dogadanje opisuje potpuno razlicito.",
+
+  "Barbara Celjska (oko 1392.–1451.) bila je njemacko-rimska carica, ugarska i ceska kraljica te hrvatska banovina, poznata kao jedna od najutjecajnijih i najkontroverznijih vladarica kasnog srednjeg vijeka. Bila je kcerka mocanog Hermana II. Celjskog i supruga Sigmunda Luksemburškog, cara Svetog Rimskog Carstva. Poznata je po politickoj inteligenciji, obrazovanosti i navodnoj razuzdanosti zivota, zbog cega su je suvremenici prozvali njemackom Messalinom. Nakon Sigmundove smrti 1437. pokusala je zadrzati politicki utjecaj, ali je bila prisiljena povuci se iz javnog zivota. Celjski grofovi, kojima je Barbara pripadala, bili su jedna od najmocanijih feudalnih obitelji jugoistocne Europe.",
+
+  "Tequila efekt naziv je za financijsku zarazu koja je 1994.–1995. zahvatila latinoamericke ekonomije nakon meksicke valutne krize. Krajem prosinca 1994. meksicka vlada devalvirala je pezo, sto je pokrenulo masovni bijeg stranog kapitala iz zemlje. Kriza se munjevito prosirila na Argentina, Brazil, Peru i ostale latinoamericke trziste, buduci da su medunarodni investitori panicki povlacili novac iz cijele regije. Termin tequila efekt kovanica je ekonomista koji su promatrali kako se financijska zaraza siri poput dominoa. Kriza je imala teske socijalne posljedice — rast nezaposlenosti, pad standarda i drustveni nemiri — i potaknula reformu medunarodnig financijskog sustava.",
+
+  "Savudrija je rt i istoimeno naselje na krajnjem sjeverozapadu Istre, u Republici Hrvatskoj, poznat po svom svjetioniku koji je najstariji aktivni svjetionik na Jadranu i ujedno najsjevernija tocka Hrvatske. Svjetionik je izgraden 1818. pod austrijskom upravom, za vladavine cara Franje I., na inicijativu admirala Pavla Dabrovica koji ga je podigao kao uspomenu na ljubav prema grofico Luizi Mercati. Kula je visoka 36 metara i jos uvijek aktivno sluz pomorskoj navigaciji. Savudrija je i poznata po medunarodnon arbitraznon sporu izmedju Hrvatske i Slovenije oko razgranicenja teritorijalnih voda u Piranskom zaljevu.",
+
+  "Bourbon je vrsta americkog viskija s kontroliranim podrijetlom, proizvedena iskljucivo u SAD-u (najcesce u saveznoj drzavi Kentucky). Da bi whiskey mogao nositi naziv bourbon, mora zadovoljiti stroge zakonske uvjete: destiliran je od fermentiranog zitnog mosa koji sadrzi najmanje 51 posto kukuruza, ostatak su obicno raž, jecam i psenica. Mora biti destiliran na manje od 80% alkohola po volumenu, punjen u boci na manje od 62,5% te odlezan u novim, spaljenima americkim hrastovim bacvama (charred oak barrels). Ne postoji minimalna zakonska duljina odlezavanja, osim za straight bourbon koji mora odlezati najmanje dvije godine.",
+
+  "SARS-CoV-2 (Severe Acute Respiratory Syndrome Coronavirus 2) virus je iz porodice Coronaviridae koji uzrokuje bolest COVID-19. Prvi slucajevi identificirani su u prosincu 2019. u Wuhanu, Kina, a SZO je u ozujku 2020. proglasila pandemiju. Ikonicna ilustracija virusa, koju su krajem sijecnja 2020. izradili ilustratori Alissa Eckert i Dan Higgins za americke Centra za kontrolu i prevenciju bolesti (CDC), prikazuje virus kao srebrkastu kuglu s karakteristicnim bodljastim ispupcenjima — spike proteinima — u zagasitocervenoj boji. Ta ilustracija postala je jedna od najreprodiciranijih znanstvenih slika u povijesti i globalni vizualni simbol pandemije.",
+
+  "Ian James Thorpe (rod. 1982.) australski je bivsi plivac, jedan od najuspjesnijih olimpijaca u povijesti plivanja. Na Olimpijskim igrama u Sydneyu 2000. osvojio je tri zlatne i dvije srebrne medalje, a u ukupnoj olimpijskoj karijeri skupio je pet zlatnih, tri srebrne i jednu broncanu medalju. Nadimak Thorpedo dobio je kombinacijom svog prezimena i rijeci torpedo, alludirajuci na njegovu brzinu i snagu u vodi. Poznat je i po izuzetno velikim stopalima (nosi broj 17), sto mu je davalo prednost u odmaku vode. Nakon povlacenja 2006. bavio se humanitarnim radom i javno progovorio o borbi s depresijom i problemima mentalnog zdravlja.",
+
+  "Gazpacho je hladna juha andaluzijskog podrijetla iz juzne Spanije, koja se u klasicnoj varijanti priprema od svjezih rajcica, paprike, krastavca, luka, cesnaka, maslinovog ulja, octa i bijelog kruha. Sluzi se ohladora, najcesce ljeti kao osvjezavajuce jelo. Podrijetlo recepta seže u rimsko doba, kada se u Andaluziji pilo slicno osvjezavajuce pice od kruha, octa i vode nazvano posca. Nakon sto su Spanjolci u 16. st. iz Amerike donijeli rajcicu, recept je evoluirao u oblik koji poznajemo danas. Gazpacho je sinonim za mediteransku kuhinju i zdrav zivot — bogat vitaminima, antioksidansima i vlaknima. Postoji i inacica salmorejo, gusci i kremastija verzija samo od rajcice i kruha.",
+
+  "Macrocystis pyrifera, poznata kao divovski kelp, je vrsta smedih morskih algi i najveci poznati primjerak algi na svijetu. Moze narasti i vise od 45 metara u duljinu, a u povoljnim uvjetima raste i do 60 centimetara na dan. Zivi u hladnim, hranjivim obalnim vodama Tihog oceana — uz obale Kalifornije, Cilea, Australije i Juzne Afrike — tvorenji gustim podvodnim sumama koje su staniste za stotine vrsta morskih organizama, od ribi i morskih vidri do beskraljesnjaka. Kelp sume imaju kljucnu ekolosku ulogu u apsorbciji ugljikovog dioksida i produkciji kisika. Industrija ga koristi kao izvor algina, tvari koja se koristi u prehrambenoj i farmaceutskoj industriji."
+];
+
+var QS = [
+  {n:1,q:"Koji je <strong>stripovski junak</strong> roden u Valletti 10. srpnja 1887. kao sin britanskog mornara iz Cornwalla i ciganske vjestice iz Andaluzije, a prvi se put pojavio u <em>Baladi o slanom moru</em>?",a:["corto maltese","corto"],p:[]},
+  {n:2,q:"Ime kojega bi se <strong>vojskovode</strong> i jednoga od najvecih antickih stratega s njegova materinskog jezika moglo prevesti kao &bdquo;dar Baalov&ldquo; ili &bdquo;milost Baalova&ldquo;?",a:["hanibal barka","hannibal barca","hanibal","hannibal"],p:[]},
+  {n:3,q:"Koja se najkraca i najjednostavnija <strong>rijec</strong> u Morseovu kodu &ndash; sastavljena od triju kratkih, triju dugih i jos triju kratkih signala &ndash; koristi kao medunarodni signal za pomoc?",a:["sos"],p:[]},
+  {n:4,q:"Po kojem je ceskom <strong>studentu</strong> nazvan asteroid broja 1834, koji je u hamburskom opservatoriju 1969. godine otkrio astronom Lubos Kohoutek?",a:["jan palach","palach"],p:[]},
+  {n:5,q:"Biznismen i pisac Dimitrios Vikelas upamcen je kao prvi predsjednik koje medunarodne sportske <strong>organizacije</strong>, na cijem je celu bio od 1894. do 1896. godine?",a:["medunarodni olimpijski odbor","moo","ioc","olimpijski odbor"],p:["olimpij"]},
+  {n:6,q:"Koja je najveca zivuca <strong>vrsta glodavaca</strong>, cije ime na gvaranskom jeziku znaci &bdquo;vlasnik trave&ldquo;?",a:["kapibara","vodenprase","capybara"],p:["glodav"]},
+  {n:7,q:"Koja je sovjetska <strong>videoigrica</strong> na Zapad lansirana 1986. godine pod marketinskim sloganom &bdquo;From Russia with Love&ldquo;?",a:["tetris"],p:[]},
+  {n:8,q:"Koje je cuveno <strong>natjecanje ljepote</strong>, jedno od cetiriju najznacajnijih te vrste u svijetu, 1951. godine pokrenuo Britanac Eric Morley?",a:["izbor za miss svijeta","miss svijeta","miss world"],p:["miss"]},
+  {n:9,q:"Na kom se <strong>polju</strong> u Lici 1493. godine dogodila bitka u kojoj je osmanska vojska porazila hrvatsku feudalnu vojsku pod zapovjednistvom bana Emerika Derencina?",a:["krbavsko polje","krbava"],p:[]},
+  {n:10,q:"Na kom je TV <strong>kanalu</strong>, koji je s emitiranjem poceo prvog dana kolovoza 1981. godine, nakon uvodnog priloga prvi prikazani spot bio onaj za pjesmu <em>Video Killed the Radio Star</em>?",a:["mtv","music television"],p:[]},
+  {n:11,q:"Vaganova, Cecchetti, Bournonville i Balanchine medunarodne su metode treniranja i poucavanja koje <strong>forme izvedbene umjetnosti</strong>?",a:["balet","ballet"],p:[]},
+  {n:12,q:"U znacenju &bdquo;sveto&ldquo; ili &bdquo;zabranjeno&ldquo; na tonganskom jeziku, koji se cetveroslovni <strong>pojam</strong> javlja u gotovo svim kulturama i oznacava zabranjen predmet, radnju ili rijec?",a:["tabu","taboo"],p:[]},
+  {n:13,q:"Koja je pop-<strong>pjevacica</strong> pocetkom 2019. pjesmama <em>7 Rings</em>, <em>Break Up With Your Girlfriend</em> i <em>Thank U, Next</em> u istom tjednu zasjela na prva tri mjesta Billboard Hot 100?",a:["ariana grande","ariana"],p:[]},
+  {n:14,q:"U koje se <strong>naselje</strong> dvadesetak kilometara od sredista Los Angelesa preselio William Smith u seriji emitiranoj na NBC-ju od 1990. do 1996.?",a:["bel air","bel-air"],p:[]},
+  {n:15,q:"Na preporuku Matice ilirske, ep kojega je baroknog <strong>knjizevnika</strong> dopunio Ivan Mazuranic napisavsi 14. i 15. pjevanje?",a:["ivan gundulic","gundulic"],p:["gundul"]},
+  {n:16,q:"Koji je <strong>kviz</strong>, po mnogima najpopularniji u Hrvatskoj i zemljama bivse Jugoslavije, pocinjao pjesmom <em>Child of Vision</em> britanske grupe <em>Supertramp</em>?",a:["kviskoteka"],p:[]},
+  {n:17,q:"<strong>Tko</strong> je nekoliko mjeseci prije smrti 2013. napisao pismo ruskom sveceniku pitajuci se je li odgovoran za smrt jer mu je puska oduzela ljudske zivote?",a:["mihail kalasnjikov","kalasnjikov","mikhail kalashnikov","kalashnikov"],p:[]},
+  {n:18,q:"Kako se zvala rimska <strong>svecanost</strong> u cast ocu vrhovnog rimskog boga tijekom prosinca, s gozbama, pijankama i medusobnim darivanjem?",a:["saturnalije","saturnalia"],p:[]},
+  {n:19,q:"Koji je oko 800 km dug <strong>hodocasnicki put</strong> Vijece Europe 1987. proglasilo prvom europskom kulturnom rutom?",a:["put svetog jakova","camino de santiago","camino","put sv jakova"],p:["santiago","jakob","camino"]},
+  {n:20,q:"Kako se zove jedno od najdojmljivijih <strong>zvijezda</strong>, cijih sedam najsjajnijih zvijezda predstavlja ramena i koljena mitskog diva, a jos tri zvijezde njegov pojas?",a:["orion","lovac"],p:[]},
+  {n:21,q:"Kako nazivamo najmanju <strong>smjestajnu jedinicu</strong> povrsine 20-40 m2, koja se sastoji od jedne prostorije s vise funkcija, a ime joj dolazi od francuske rijeci za &bdquo;momka&ldquo;?",a:["garsonijera","garsoniera"],p:[]},
+  {n:22,q:"Kako bi &bdquo;kompletirao&ldquo; slavnu hrvatsku kosarkaska petorku, <strong>tko</strong> se u rujnu 2021. u Springfieldu pridruzio Mirku Novoselu, Kresi Cosicu, Drazenu Petrovicu i Dinu Radi?",a:["toni kukoc","kukoc"],p:[]},
+  {n:23,q:"Kako se zova najdulja i najcvrca <strong>kost</strong> u ljudskom tijelu, cija prosjecna duljina zauzima gotovo 27 posto visine tijela?",a:["bedrena kost","natkoljenicna kost","femur","bedrena"],p:["femur","bedrena","natkolj"]},
+  {n:24,q:"Kako se zove amaterska sportska <strong>utrka</strong> tradicionalnih autohtonih plovila u dolini Neretve, koja se od 1998. odrzava druge subote u kolovozu na relaciji od 22500 metara?",a:["maraton lada","maraton ladja"],p:["maraton","lad"]},
+  {n:25,q:"Koju je mladu ekolosku <strong>aktivisticu</strong> casopis <em>Time</em> proglasio osobom 2019., cime je postala najmlada osoba na toj poziciji?",a:["greta thunberg","greta","thunberg"],p:[]},
+  {n:26,q:"Koji je trovolumenski, izduzeni, najcesce luksuzni <strong>automobil</strong> s nepokretnim krovom nazvan po dugackim kaputima pastira iz bivse francuske regije cije je srediste bio grad Limoges?",a:["limuzina","limousine"],p:[]},
+  {n:27,q:"Spot s amsterdamskog rock-festivala kojeg je <strong>benda</strong> 1988. postala prvi videospot izvodaca s podrucja bivse Jugoslavije prikazan na MTV-u?",a:["psihomodo pop","psihomodo"],p:[]},
+  {n:28,q:"Temeljena na bestseleru Anthonyja Bourdaina, kako se zove humoristicna <strong>serija</strong> s Bradleyjem Cooperom o darovitom kuharu s problemom ovisnosti?",a:["dosje kuhinja","kitchen confidential"],p:["kuhinja","kitchen"]},
+  {n:29,q:"Kako su 1916. u francusko-njemackom rjecniku Hugo Ball i Richard Huelsenbeck pronasli <strong>rijec</strong> u znacenju &bdquo;drveni konjic&ldquo; i nadjenuli ime novom umjetnickom pravcu?",a:["dada","dadaizam","dadaism"],p:[]},
+  {n:30,q:"Uz koji se <strong>poluotok</strong> vezuje jedinstveni sustav glazbene notacije <em>jeong-gan-bo</em>, nastao u vrijeme Sejonga Velikog?",a:["korejski poluotok","korejski","korea"],p:[]},
+  {n:31,q:"Kako se zove <strong>dio pisanog teksta</strong> u kazalisnoj drami koji sadrzi kratke opise scena, likova te upute glumcima i redateljima, uvijek pisan u kurzivu?",a:["didaskalije","didaskalija"],p:[]},
+  {n:32,q:"Koje je <strong>godisnje doba</strong> u naslovu Botticellijeva djela, personificirano likom Venere u pratnji triju muza, Merkura te Zefira, Klorise i Flore?",a:["proljece","proljetje","spring","primavera"],p:[]},
+  {n:33,q:"Kako se <strong>prezivaju</strong> poznata literarna braca Dmitrij, Ivan i Aljosa u remek-djelu iz 1880. godine?",a:["karamazov","karamazovi"],p:[]},
+  {n:34,q:"Koji je Kurosawin <strong>film</strong> iz 1950. godine, nastao po kultnoj kratkoj prici, posebno zainteresirao zapadnu publiku za japansku kinematografiju?",a:["rasomon","rashomon"],p:[]},
+  {n:35,q:"Kci Hermana II. Celjskog, udana za cara Zigmunda Luksemburskog &mdash; kako se zvala <strong>kraljica</strong> Hrvatske, Ugarske i Ceske te carica Svetog Rimskog Carstva?",a:["barbara celjska","barbara"],p:["celjsk","barbara"]},
+  {n:36,q:"Ekonomska kriza u Meksiku krajem 1994., uzrokovana devalvacijom pesosa, kolokvijalno je poznata kao efekt kojeg <strong>alkoholnog pica</strong>?",a:["tekila","tequila"],p:[]},
+  {n:37,q:"Kako se zove najstariji aktivni <strong>svjetionik</strong> na Jadranu te ujedno najsjeverniji u Hrvatskoj, izgraden 1818. na istoimenom rtu?",a:["savudrija","savudria"],p:[]},
+  {n:38,q:"Da bi burbon-viski bio burbon, mora biti proizveden od smjese koja sadrzi najmanje 51% koje <strong>biljke</strong> iz porodice trava?",a:["kukuruz","corn","mais"],p:[]},
+  {n:39,q:"Dobivsi zadatak krajem sijecnja 2020., Alissa Eckert i Dan Higgins napravili su uvecani prikaz u obliku srebrenkaste kugle sa zagasitocrvenim bodljikama &mdash; <strong>cega</strong>?",a:["koronavirus","coronavirus","sars-cov-2","covid","covid-19"],p:["virus","korona","covid"]},
+  {n:40,q:"Koji je bivsi australski <strong>plivac</strong> &ndash; peterostruki zlatni olimpijac, najuspjesniji na Olimpijskim igrama u Sidneyju &ndash; nosio nadimak &bdquo;Thorpedo&ldquo;?",a:["ian thorpe","thorpe"],p:[]},
+  {n:41,q:"Podrijetlom iz Andaluzije, kako se zove <strong>hladna juha</strong> s povrcem, najcesce na bazi rajcica?",a:["gazpacho"],p:[]},
+  {n:42,q:"Znanstvenog imena <em>Macrocystis pyrifera</em>, divovski kelp koji moze narasti i vise od 30 metara &mdash; najveci je svjetski primjerak koje <strong>vrste organizama</strong>?",a:["alge","alga","algae","morske alge"],p:["alg"]}
+];
+
+var cur = 0;
+var saved = [];
+for (var i = 0; i < 42; i++) saved.push(null);
+
+function norm(s) {
+  return s.toLowerCase()
+    .replace(/[čć]/g,'c').replace(/š/g,'s').replace(/ž/g,'z').replace(/đ/g,'d')
+    .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+function judge(user, q) {
+  var u = norm(user);
+  var i, a, w;
+  for (i = 0; i < q.a.length; i++) {
+    a = norm(q.a[i]);
+    if (u === a || u.indexOf(a) !== -1 || a.indexOf(u) !== -1) return 'correct';
+  }
+  for (i = 0; i < q.p.length; i++) {
+    if (u.indexOf(norm(q.p[i])) !== -1) return 'partial';
+  }
+  var pw = norm(q.a[0]).split(' ').filter(function(x){return x.length>2;});
+  var uw = u.split(' ');
+  var hit = 0;
+  for (i = 0; i < pw.length; i++) {
+    for (var j = 0; j < uw.length; j++) {
+      if (uw[j].indexOf(pw[i]) !== -1 || pw[i].indexOf(uw[j]) !== -1) { hit++; break; }
+    }
+  }
+  if (pw.length > 0 && hit / pw.length >= 0.6) return 'correct';
+  if (pw.length > 0 && hit / pw.length >= 0.3) return 'partial';
+  return 'wrong';
+}
+
+function calcScore() {
+  var s = 0;
+  for (var i = 0; i < saved.length; i++) {
+    if (!saved[i]) continue;
+    if (saved[i].r === 'correct') s += 1;
+    else if (saved[i].r === 'partial') s += 0.5;
+  }
+  return s;
+}
+
+function fmtScore(s) { return s % 1 === 0 ? String(s) : s.toFixed(1); }
+
+function render() {
+  var q = QS[cur];
+  document.getElementById('q-num').textContent = 'PITANJE ' + (cur < 9 ? '0' : '') + (cur+1);
+  document.getElementById('q-text').innerHTML = q.q;
+  document.getElementById('prog-fill').style.width = ((cur+1)/42*100) + '%';
+  document.getElementById('prog-label').textContent = (cur+1) + ' / 42';
+  document.getElementById('score-val').textContent = fmtScore(calcScore());
+
+  var inp = document.getElementById('ans-input');
+  var badge = document.getElementById('result-badge');
+  var btn = document.getElementById('btn-check');
+  var sv = saved[cur];
+
+  badge.className = 'result-badge';
+  if (sv) {
+    inp.value = sv.text;
+    inp.disabled = true;
+    btn.disabled = true;
+    btn.textContent = 'ODGOVORENO';
+    showBadge(sv.r, q.a[0], cur);
+  } else {
+    inp.value = '';
+    inp.disabled = false;
+    btn.disabled = false;
+    btn.textContent = 'PROVJERI';
+  }
+
+  document.getElementById('btn-prev').disabled = (cur === 0);
+  document.getElementById('btn-next').disabled = (cur === 41);
+}
+
+function showBadge(r, correct, idx) {
+  var badge = document.getElementById('result-badge');
+  badge.className = 'result-badge ' + r;
+  var v = {correct:'✓ TOCNO', wrong:'✗ NETOCNO', partial:'~ DJELOMICNO'};
+  document.getElementById('r-verdict').textContent = v[r];
+  var expl = (idx !== undefined && EXPL[idx]) ? EXPL[idx] : '';
+  var explEl = document.getElementById('r-expl');
+  explEl.textContent = expl;
+  explEl.style.marginTop = expl ? '8px' : '0';
+  explEl.style.lineHeight = '1.7';
+  explEl.style.fontSize = '13px';
+  explEl.style.color = '#b0aa98';
+  document.getElementById('r-correct').textContent = r!=='correct' ? 'Tocno: ' + correct : '';
+}
+
+function doCheck() {
+  var inp = document.getElementById('ans-input');
+  var text = inp.value.replace(/^\s+|\s+$/g,'');
+  if (!text) return;
+  var q = QS[cur];
+  var r = judge(text, q);
+  saved[cur] = {text: text, r: r};
+  inp.disabled = true;
+  var btn = document.getElementById('btn-check');
+  btn.disabled = true;
+  btn.textContent = 'ODGOVORENO';
+  showBadge(r, q.a[0], cur);
+  document.getElementById('score-val').textContent = fmtScore(calcScore());
+  var all = true;
+  for (var i = 0; i < saved.length; i++) { if (!saved[i]) { all = false; break; } }
+  if (all && cur === 41) setTimeout(showResults, 1500);
+}
+
+function go(d) {
+  cur += d;
+  if (cur < 0) cur = 0;
+  if (cur > 41) cur = 41;
+  render();
+  window.scrollTo(0,0);
+}
+
+function showResults() {
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('results-screen').style.display = 'block';
+  var c=0,p=0,w=0;
+  for (var i=0;i<saved.length;i++) {
+    if (!saved[i]) continue;
+    if (saved[i].r==='correct') c++;
+    else if (saved[i].r==='partial') p++;
+    else w++;
+  }
+  var tot = c + p*0.5;
+  document.getElementById('res-total').textContent = fmtScore(tot);
+  document.getElementById('res-c').textContent = c;
+  document.getElementById('res-p').textContent = p;
+  document.getElementById('res-w').textContent = w;
+}
+
+function shuffle() {
+  for (var i = QS.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = QS[i]; QS[i] = QS[j]; QS[j] = tmp;
+    var te = EXPL[i]; EXPL[i] = EXPL[j]; EXPL[j] = te;
+  }
+}
+
+function restart() {
+  for (var i=0;i<42;i++) saved[i]=null;
+  cur=0;
+  shuffle();
+  document.getElementById('results-screen').style.display='none';
+  document.getElementById('quiz-screen').style.display='block';
+  render();
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+
+window.onload = function() {
+  document.getElementById('btn-start').onclick = function() {
+    shuffle();
+    document.getElementById('start-screen').style.display='none';
+    document.getElementById('quiz-screen').style.display='block';
+    render();
+  };
+  document.getElementById('btn-check').onclick = doCheck;
+  document.getElementById('btn-prev').onclick = function(){ go(-1); };
+  document.getElementById('btn-next').onclick = function(){ go(1); };
+  document.getElementById('btn-restart').onclick = restart;
+  document.getElementById('ans-input').onkeydown = function(e) {
+    if (e.keyCode===13 && !e.shiftKey) { e.preventDefault(); doCheck(); }
+  };
+};
+</script>
+</body>
+</html>
