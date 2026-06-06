@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INQUIZUS</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Inquizus">
+<meta name="theme-color" content="#e8c84a">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0e0e0e; --surface: #1a1a1a; --border: #2e2e2e;
+  --accent: #e8c84a; --accent2: #e05a2b; --text: #f0ece0;
+  --muted: #777; --correct: #4caf7d; --wrong: #e05a2b; --partial: #e8c84a;
+}
+body { background: var(--bg); color: var(--text); font-family: Georgia, serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 16px 80px; }
+.header { width: 100%; max-width: 640px; padding: 36px 0 18px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+.header-title { font-family: Impact, Arial Black, sans-serif; font-size: clamp(48px, 14vw, 84px); letter-spacing: 8px; color: var(--accent); line-height: 1; }
+.header-sub { font-family: monospace; font-size: 11px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-top: 8px; }
+#name-screen { width: 100%; max-width: 640px; text-align: center; padding: 20px; }
+.name-info { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 24px; border: 1px solid var(--border); padding: 20px; text-align: left; }
+.name-info b { color: var(--text); }
+.name-input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: Georgia, serif; font-size: 18px; padding: 14px 16px; outline: none; margin-bottom: 12px; text-align: center; letter-spacing: 2px; }
+.name-input:focus { border-color: var(--accent); }
+.btn-primary { display: block; width: 100%; background: var(--accent); color: #000; border: none; font-family: Impact, sans-serif; font-size: 20px; letter-spacing: 4px; padding: 16px; cursor: pointer; }
+.btn-primary:disabled { opacity: 0.4; cursor: default; }
+#start-screen { display: none; width: 100%; max-width: 640px; }
+.welcome-box { border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; }
+.welcome-name { font-family: Impact, sans-serif; font-size: 28px; letter-spacing: 3px; color: var(--accent); margin-bottom: 6px; }
+.welcome-stats { font-family: monospace; font-size: 12px; color: var(--muted); }
+.welcome-stats b { color: var(--text); }
+.rounds-title { font-family: monospace; font-size: 11px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+.round-btn { display: flex; justify-content: space-between; align-items: center; width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: Georgia, serif; font-size: 14px; padding: 14px 16px; cursor: pointer; margin-bottom: 8px; text-align: left; }
+.round-btn:hover { border-color: var(--accent); }
+.round-btn.done { border-color: var(--correct); }
+.round-tag { font-family: monospace; font-size: 11px; letter-spacing: 1px; }
+.round-tag.done { color: var(--correct); }
+.round-tag.partial { color: var(--partial); }
+.round-tag.fresh { color: var(--muted); }
+.switch-user { background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: monospace; font-size: 11px; letter-spacing: 2px; padding: 10px 16px; cursor: pointer; width: 100%; margin-top: 8px; }
+.switch-user:hover { color: var(--accent); border-color: var(--accent); }
+.progress-bar { width: 100%; max-width: 640px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+.progress-track { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); transition: width 0.4s; }
+.progress-label { font-family: monospace; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.score-display { font-family: monospace; font-size: 12px; color: var(--muted); text-align: right; width: 100%; max-width: 640px; margin-bottom: 16px; }
+.score-display b { color: var(--accent); }
+.card { width: 100%; max-width: 640px; background: var(--surface); border: 1px solid var(--border); padding: 24px; margin-bottom: 14px; }
+.card-number { font-family: monospace; font-size: 11px; letter-spacing: 3px; color: var(--accent2); margin-bottom: 10px; text-transform: uppercase; }
+.card-question { font-size: 15px; line-height: 1.75; margin-bottom: 18px; }
+.card-question strong { color: var(--accent); }
+.answer-area { display: flex; gap: 8px; }
+.answer-input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: Georgia, serif; font-size: 15px; padding: 10px 12px; outline: none; resize: none; min-height: 44px; }
+.answer-input:focus { border-color: var(--accent); }
+.answer-input:disabled { opacity: 0.5; }
+.btn-check { background: var(--accent); color: #000; border: none; font-family: Impact, sans-serif; font-size: 14px; letter-spacing: 2px; padding: 10px 16px; cursor: pointer; white-space: nowrap; }
+.btn-check:disabled { opacity: 0.4; cursor: default; }
+.result-badge { margin-top: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.5; display: none; border-left: 3px solid; }
+.result-badge.correct { display: block; background: rgba(76,175,125,0.1); border-color: var(--correct); }
+.result-badge.wrong { display: block; background: rgba(224,90,43,0.1); border-color: var(--wrong); }
+.result-badge.partial { display: block; background: rgba(232,200,74,0.1); border-color: var(--partial); }
+.verdict { font-family: monospace; font-size: 11px; letter-spacing: 2px; font-weight: bold; text-transform: uppercase; margin-bottom: 6px; }
+.result-badge.correct .verdict { color: var(--correct); }
+.result-badge.wrong .verdict { color: var(--wrong); }
+.result-badge.partial .verdict { color: var(--partial); }
+.r-expl { color: #b0aa98; font-size: 13px; line-height: 1.7; margin-top: 6px; }
+.correct-ans { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.nav-row { width: 100%; max-width: 640px; display: flex; justify-content: space-between; gap: 10px; }
+.btn-nav { background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: monospace; font-size: 12px; padding: 9px 16px; cursor: pointer; }
+.btn-nav:hover { border-color: var(--accent); color: var(--accent); }
+.btn-nav:disabled { opacity: 0.3; cursor: default; }
+.btn-back { background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: monospace; font-size: 11px; letter-spacing: 1px; padding: 8px 14px; cursor: pointer; width: 100%; max-width: 640px; margin-bottom: 16px; text-align: left; }
+.btn-back:hover { color: var(--accent); border-color: var(--accent); }
+#results-screen { display: none; width: 100%; max-width: 640px; text-align: center; padding: 40px 0; }
+.final-score { font-family: Impact, sans-serif; font-size: 96px; color: var(--accent); line-height: 1; }
+.final-label { font-family: monospace; font-size: 12px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 24px; }
+.final-breakdown { display: flex; justify-content: center; gap: 40px; margin-bottom: 32px; }
+.fi-n { font-family: Impact, sans-serif; font-size: 40px; }
+.fi-l { font-family: monospace; font-size: 10px; color: var(--muted); letter-spacing: 2px; }
+#quiz-screen { display: none; width: 100%; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-title">INQUIZUS</div>
+  <div class="header-sub" id="header-sub">Pub Kviz &middot; Vol. 1</div>
+</div>
+<div id="name-screen">
+  <div class="name-info">
+    <b>Dobrodosli u Inquizus!</b><br><br>
+    Unesite svoje ime kako bi app pamtio vas napredak lokalno na ovom uredaju.<br><br>
+    Svaka osoba na svom telefonu ima vlastiti profil i napredak.
+  </div>
+  <input class="name-input" id="name-input" type="text" placeholder="VASE IME..." maxlength="20">
+  <button class="btn-primary" id="btn-enter-name" disabled>ULAZ</button>
+</div>
+<div id="start-screen">
+  <div class="welcome-box">
+    <div class="welcome-name" id="welcome-name"></div>
+    <div class="welcome-stats" id="welcome-stats"></div>
+  </div>
+  <div class="rounds-title">Odaberite rundu</div>
+  <div id="rounds-list"></div>
+  <button class="switch-user" id="btn-switch">Promijeni korisnika</button>
+</div>
+<div id="quiz-screen">
+  <button class="btn-back" id="btn-back">Natrag na runde</button>
+  <div class="progress-bar">
+    <div class="progress-track"><div class="progress-fill" id="prog-fill"></div></div>
+    <div class="progress-label" id="prog-label">1 / 42</div>
+  </div>
+  <div class="score-display">Bodovi: <b id="score-val">0</b></div>
+  <div class="card">
+    <div class="card-number" id="q-num">PITANJE 01</div>
+    <div class="card-question" id="q-text"></div>
+    <div class="answer-area">
+      <textarea class="answer-input" id="ans-input" rows="2" placeholder="Tvoj odgovor..."></textarea>
+      <button class="btn-check" id="btn-check">PROVJERI</button>
+    </div>
+    <div class="result-badge" id="result-badge">
+      <div class="verdict" id="r-verdict"></div>
+      <div class="r-expl" id="r-expl"></div>
+      <div class="correct-ans" id="r-correct"></div>
+    </div>
+  </div>
+  <div class="nav-row">
+    <button class="btn-nav" id="btn-prev">&larr; PRETHODNO</button>
+    <button class="btn-nav" id="btn-next">SLJEDECE &rarr;</button>
+  </div>
+</div>
+<div id="results-screen">
+  <div class="final-score" id="res-total">0</div>
+  <div class="final-label">od <span id="res-max">42</span> moguca boda</div>
+  <div class="final-breakdown">
+    <div><div class="fi-n" style="color:var(--correct)" id="res-c">0</div><div class="fi-l">TOCNO</div></div>
+    <div><div class="fi-n" style="color:var(--partial)" id="res-p">0</div><div class="fi-l">DJELOMICNO</div></div>
+    <div><div class="fi-n" style="color:var(--wrong)" id="res-w">0</div><div class="fi-l">KRIVO</div></div>
+  </div>
+  <button class="btn-primary" id="btn-back-results" style="max-width:640px;margin:0 auto;">NATRAG NA RUNDE</button>
+</div>
+<script src="questions.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
